@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Snake Game</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" crossorigin="anonymous">
+
+    <style>
+        #gameScreen{
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <section class="vh-100">
+        <div class="container h-100">
+
+            <div id="initialScreen" class="h-100">
+                <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                    <h1>Multiplayer Snake</h1>
+                    <button class="btn btn-success" id="newGameButton" type="submit">Create New Game</button>
+
+                    <div>OR</div>
+
+                    <div class="form-group">
+                        <input type="text" id="gameCodeInput" placeholder="Enter Game Code">
+                    </div>
+                    <button class="btn btn-success" id="joinGameButton" type="submit">Join Game</button>
+                </div>
+            </div>
+
+            <div id="gameScreen" class="h-100">
+                <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                    <h1> Your game code is : <span id="gameCodeDisplay"></span> </h1>
+                    <canvas id="canvas" ></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"  ></script>
+    <script>
+
+        const BG_COLOUR = "#231f20";
+        const SNAKE_COLOUR = "#c2c2c2";
+        const FOOD_COLOUR = "#e66916";
+        const gameScreen = document.querySelector('#gameScreen');
+        const initialScreen = document.getElementById('initialScreen');
+        const newGameButton = document.getElementById('newGameButton');
+        const joinGameButton = document.getElementById('joinGameButton');
+        const gameCodeInput = document.getElementById('gameCodeInput');
+        const gameCodeDispay = document.getElementById('gameCodeDisplay');
+
+        newGameButton.addEventListener('click', newGame);
+        joinGameButton.addEventListener('click', joinGame);
+
+        function newGame(){
+            socket.emit('newGame');
+            init();
+        }
+        function joinGame(){
+            const gameCode = gameCodeInput.value;
+            socket.emit('joinGame', gameCode);
+            init();
+        }
+
+        const socket = io("http://localhost:3000/");
+
+        socket.on('init', handelInit);
+        socket.on('gameState', handeGameState);
+        socket.on('gameOver', handleGameOver);
+        socket.on('gameCode', handleGameCode);
+        socket.on('unknownGame', handleUnknownGame);
+        socket.on('tooManyPlayers', handleTooManyPlayers);
+
+        
+
+
+        let canvas, ctx;
+        let playerNumber;
+        let gameActive = false;
+        
+        function init(){
+
+            initialScreen.style.display = 'none';
+            gameScreen.style.display = 'block'; 
+
+            canvas = document.getElementById('canvas');
+            ctx = canvas.getContext('2d');
+
+            canvas.width = canvas.height = 600;
+
+            ctx.fillStyle = BG_COLOUR;
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+
+            document.addEventListener('keydown', keydown);
+            gameActive = true;
+        }
+
+        function keydown(e){
+            socket.emit('keydown', e.keyCode)
+        }
+
+
+        function paintGame(state){
+            ctx.fillStyle = BG_COLOUR;
+            ctx.fillRect(0,0, canvas.width, canvas.height);
+
+            const food = state.food;
+            const gridsize = state.gridsize;
+            const size = canvas.width / gridsize;
+
+            ctx.fillStyle = FOOD_COLOUR;
+            ctx.fillRect(food.x * size, food.y * size, size, size)
+
+            paintPlayer(state.players[0], size, SNAKE_COLOUR);
+            paintPlayer(state.players[1], size, 'red');
+            
+        }
+
+        function paintPlayer(playerState, size, colour){
+            const snake = playerState.snake;
+
+            ctx.fillStyle = colour;
+            for(let cell of snake){
+                ctx.fillRect(cell.x * size, cell.y * size, size, size);
+            }
+        }
+        function handelInit(number){
+            playerNumber = number;
+        }
+
+        function handeGameState(gameState){
+
+            if(!gameActive){
+                return;
+            }
+
+            gameState = JSON.parse(gameState);
+            requestAnimationFrame(() => paintGame(gameState))
+        }
+
+        function handleGameOver(data){
+            data  = JSON.parse(data);
+            if(!gameActive){
+                return;
+            }
+            if(data.winner === playerNumber){
+                alert('You Win')
+            }else{
+                alert('You Lose !'); 
+            }
+            gameActive = false;
+
+        }
+        
+        function handleGameCode(gameCode){
+            gameCodeDispay.innerText = gameCode;
+        }
+
+        function handleUnknownGame(){
+            reset();
+            alert('Unknown Game Code')
+        }
+        
+        function handleTooManyPlayers(){
+            reset();
+            alert('This game is already progress')
+        }
+
+        function reset(){
+            playerNumber = null;
+            gameCodeInput.value = '';
+            gameCodeDispay.innerText = '';
+            initialScreen.style.display = 'block';
+            gameScreen.style.display = 'none';
+        }
+    </script>
+</body>
+</html>

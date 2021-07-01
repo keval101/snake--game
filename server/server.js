@@ -18,36 +18,36 @@ io.on( 'connection' , client => {
     client.on('newGame', handlNewGame);
     client.on('joinGame', handlJoinGame);
 
-    function handlJoinGame(roomName){
-        const room = io.sockets.adapter.rooms[roomName];
+    function handlJoinGame(gameCode){
+        const room = io.sockets.adapter.rooms[gameCode];
 
-        
         let allUsers;
         if(room){
             allUsers = room.sockets;
-        }
+        };
 
         let numClients = 0;
         if(allUsers){
             numClients = Object.keys(allUsers).length;
-        }
+        };
 
-        if(numClients === 0){
+        if(numClients != 0){
             client.emit('unknownGame');
             return;
         }else if(numClients > 1){
             client.emit('tooManyPlayers');
             return;
-        }
+        };
 
-        clientRooms[client.id] = roomName;
-        client.join(roomName);
+        clientRooms[client.id] = gameCode;
+        client.join(gameCode);
         client.number = 2;
         client.emit('init', 2);
 
-        startGameInterval(roomName);
+        startGameInterval(gameCode);
     }
 
+    
 
     function handlNewGame(){
         let roomName = makeid(5);
@@ -78,30 +78,30 @@ io.on( 'connection' , client => {
         const vel = getUpdateVelocity(keyCode);
         if(vel){
             state[roomName].players[client.number - 1].vel = vel;
-            
         };
     };
 
 });
 
 function startGameInterval(roomName){
-    const intervalId = setInterval(() =>{
+    const intervalId = setInterval(() =>{  
         const winner = gameLoop(state[roomName]);
         
 
         if(!winner){
             emitGameState(roomName, state[roomName])
-            client.emit('gameState', JSON.stringify(state));
         } else{
             emitGameOver(roomName, winner)
-            client.emit('gameOver');
+            
             state[roomName] = null;
             clearInterval(intervalId);
         }
     }, 1000 / FRAME_RATE)   
 }
 
-function emitGameState(roomName, gameState) {
+console.log(startGameInterval());
+
+function emitGameState(roomName, state) {
 
     io.sockets.in(roomName)
       .emit('gameState', JSON.stringify(state));
@@ -111,8 +111,6 @@ function emitGameState(roomName, gameState) {
     io.sockets.in(roomName)
       .emit('gameOver', JSON.stringify({ winner }));
   }
-
-
 
 
 

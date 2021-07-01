@@ -10,12 +10,13 @@ module.exports = {
 function initGame(){
     const state = creatGameState();
     randomFood(state);
-    return;
+    return state;
 }
 
 function creatGameState(){
     return {
-        players: [{
+        players: [
+            {
             pos:{
                 x:3,
                 y:10,
